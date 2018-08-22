@@ -142,3 +142,48 @@ exports.verify= function(req,res){
         });
     }
 }
+
+
+exports.login= function (req,res) {
+    Users.find({email: req.body.email},function (err,data) {
+       if(data.length<1 || err){
+           return res.status(401).json({
+               success: false,
+               message: "email id doesn't exist"
+           });
+       }
+       else if (data.length==1 && data[0]['verified']==0){
+            return res.status(401).json({
+                success: false,
+                message: 'verify your email by clicking on link sent on your mail before logging in with this email id.'
+            });
+       }else{
+           bcrypt.compare(req.body.password,data[0].password,function (err,result) {
+               if(err){
+                   return res.status(401).json({
+                       success: false,
+                       message: 'try again'
+                   });
+               }
+               if(result){
+                   var token= jwt.sign({
+                      email: data[0].email,
+                       userId: data[0]._id
+                   },
+                       'secret',
+                       {expiresIn:"72h"}
+                       );
+                   return res.status(200).json({
+                       success: 'successfully logged in',
+                       token: token
+                   });
+               }else {
+                   return res.status(401).json({
+                       success: false,
+                       message: 'invalid password'
+                   });
+               }
+           });
+       }
+    });
+};
