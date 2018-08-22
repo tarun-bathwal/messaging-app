@@ -6,7 +6,7 @@ cd messaging-app<br />
 npm install<br />
 nodemon<br />
 
-PREREQUISITE : add your email id and password in controllers/user.js file in smtpTransport function to enable sending emails for email verification without which registration is not possible. <br />
+PREREQUISITE : add your email id and password in controllers/user.js file in smtpTransport function to enable sending emails for email verification without which registration is not possible. When a user registers using his/her email id, a mail is sent to that id with a link. On cicking the link, the user is verified and hence fully registered to use other APIs available. To enable nodemailer to send these mails, the host needs to add their email address and password. <br />
 
 APIs<br />
 <br />
