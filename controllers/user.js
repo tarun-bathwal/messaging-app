@@ -1,6 +1,8 @@
 const mongoose=require('mongoose');
 const nodemailer = require("nodemailer");
 const Users=require('../models/user').Users;
+const BlockedUsers=require('../models/user').BlockedUsers;
+const Chats=require('../models/user').Chats;
 const bcrypt=require('bcrypt');
 const expressJwt = require('express-jwt');
 const jwt=require('jsonwebtoken');
@@ -187,3 +189,122 @@ exports.login= function (req,res) {
        }
     });
 };
+
+exports.blockuser= async function(req,res){
+    var Username=req.params.username;
+    var currentuser = req.userData.userId;
+    var blockId;
+    var flag=0;
+    await Users.find({username: Username},function (err,data) {
+        if(data.length<1 || err){
+            console.log("nt found");
+            flag=1;
+        }
+        else{
+            blockId=data[0]._id;
+        }
+    });
+    if(flag==0){
+        BlockedUsers.findOne({userid:currentuser},(err,result)=>{
+            if(result==undefined){
+                var entry= new BlockedUsers({
+                    _id: new mongoose.Types.ObjectId(),
+                    userid:currentuser,
+                    blocked:blockId
+                });
+                entry.save((err,result)=>{
+                    if(err){
+                        res.json({
+                            success:false,
+                            message:err.message
+                        });
+                    }
+                    else{
+                        res.json({
+                            success:true,
+                            message:Username+" has been blocked"
+                        });
+                    }
+                })
+            }
+            else{
+                BlockedUsers.updateOne({userid:currentuser},{ $push: { blocked: blockId } },function (err,result) {
+                    if(err){
+                        res.status(500).json({
+                            success:false,
+                            message: 'Sorry! can not be blocked right now. try again'
+                        });
+                    }
+                    else
+                    {
+                        res.status(200).json({
+                        success: true,
+                        message: ""+Username+" has been blocked"
+                    });}
+                });
+            }
+        });
+       
+    }
+    else{
+        res.status(200).json({
+            success:false,
+            message:"user with username "+Username+" was not found"
+        });
+    }
+}
+
+
+exports.SendMessage = async (req,res)=>{
+    var from = req.userData.userId;
+    var Username = req.body.to;
+    var subject = req.body.subject;
+    var content = req.body.content;
+    if(Username===undefined){
+        res.json({
+            success:false,
+            message:"username cannot be empty"
+        });
+        return;
+    }
+    var to;
+    var flag=0;
+    await Users.find({username: Username},function (err,data) {
+        if(data.length<1 || err){
+            flag=1;
+        }
+        else{
+            to=data[0]._id;
+        }
+    });
+    if(flag==0){
+        var msg= new Chats({
+            _id: new mongoose.Types.ObjectId(),
+            from:from,
+            to:to,
+            subject:subject,
+            content:content
+        });
+        msg.save((err,result)=>{
+            if(err){
+                res.json({
+                    success:false,
+                    message:err.message
+                });
+            }
+            else{
+                res.json({
+                    success:true,
+                    message:"sent the message to "+Username
+                });
+            }
+        });
+    }
+    else{
+        res.status(200).json({
+            success:false,
+            message:"user with username "+Username+" was not found"
+        });
+    }
+
+}

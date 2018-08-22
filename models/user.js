@@ -16,6 +16,26 @@ var userSchema= mongoose.Schema({
 
 var users=mongoose.model('users',userSchema);
 
+var blockSchema = mongoose.Schema({
+    _id:mongoose.Schema.Types.ObjectId,
+    userid: {type: mongoose.Schema.Types.ObjectId, ref: 'users'},
+    blocked: [{type: mongoose.Schema.Types.ObjectId, ref: 'users'}]
+});
+
+var blockedusers = mongoose.model('blockedusers',blockSchema);
+
+var chatSchema = mongoose.Schema({
+    _id:mongoose.Schema.Types.ObjectId,
+    from:{type: mongoose.Schema.Types.ObjectId, ref: 'users'},
+    to:{type: mongoose.Schema.Types.ObjectId, ref: 'users'},
+    subject:{type:String},
+    content:{type:String, required:true}
+});
+
+var chats = mongoose.model('chats',chatSchema);
+
 module.exports={
-    Users:users
+    Users:users,
+    BlockedUsers:blockedusers,
+    Chats:chats
 }
