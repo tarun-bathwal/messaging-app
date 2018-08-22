@@ -11,7 +11,7 @@ const crypto = require('crypto');
 const smtpTransport = nodemailer.createTransport({
     service: "Gmail",
     auth: {
-        user: "sd",
+        user: "email",
         pass: ""
     }
 });
