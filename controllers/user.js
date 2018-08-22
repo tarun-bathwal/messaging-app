@@ -58,6 +58,7 @@ exports.register= async function (req,res) {
                 success:false,
                 message:err.message
             });
+            return;
         }                    
         var rand=Math.floor((Math.random() * 100) + 54);
         rand= rand.toString();
@@ -92,115 +93,125 @@ exports.register= async function (req,res) {
             html : "Hello,<br> Please Click on the link to verify your email.<br><a href="+link+">Click here to verify</a>" 
         }
         console.log(mailOptions);
-        smtpTransport.sendMail(mailOptions, function(error, response){
-            if(error){
-                    console.log(error);
-                    res.status(500).json({
-                    success: false,
-                    message: 'registered but UNABLE to send verification email'
-                }); 
-            }
-            else{
-                res.status(200).json({
-                    success: true,
-                    message: 'sucessfully registered. Verify your email id.'
-                });
-            }
-        });           
+        try{
+            response=await smtpTransport.sendMail(mailOptions);
+        }catch(error){
+            res.status(500).json({
+                success: false,
+                message: 'registered but UNABLE to send verification email'
+            }); 
+            return;
+        }
+        res.status(200).json({
+            success: true,
+            message: 'sucessfully registered. Verify your email id.'
+        });          
     }
 }
 
-exports.verify= function(req,res){
+exports.verify= async function(req,res){
     console.log(req.protocol+":/"+req.get('host'));
     if((req.protocol+"://"+req.get('host'))==("http://"+host))
     {
         console.log("Domain is matched. Information is from Authentic email");
-        Users.find({"email": req.body.email , "verifytoken" : req.body.id},function(err,data){
-        if(!err)
-        {
-            console.log("email is verified and token verified");
-            console.log(req.query.email);
-            var query = {'email' : req.query.email};
-            console.log(query);
-            
-            var newvalues = { $set : {'verified':1}};
-            console.log(newvalues);
-            Users.update(query,newvalues,function(err,result){
-                if(err){
-                    res.status(500).json({
-                        success: false,
-                        message: 'email not verified .try again'
-                    });
-                }
-                else{
-                    res.status(200).json({
-                        success: true,
-                        message: 'sucessfully verified your email id.'
-                    });
-                }
-            });
-            
-        }
-        else{
+        try{
+            console.log("token in url "+req.query.id);
+            data=await Users.find({"email": req.query.email , "verifytoken" : req.query.id});
+        }catch(err){
             res.status(500).json({
-                success: false,
-                message: 'email not verified because of wrong token'
+                success:false,
+                message:err.message
             });
+            return;
         }
-    });
+        if(data.length<1){
+            res.json({
+                success:false,
+                message:"key is invalid"
+            });
+            return;
+        }
+        console.log("email is verified and token verified");
+        console.log(req.query.email);
+        var query = {'email' : req.query.email};
+        console.log(query);
+        var newvalues = { $set : {'verified':1}};
+        console.log(newvalues);
+        try{
+            result=await Users.update(query,newvalues);
+        }catch(err){
+            res.status(500).json({
+                success:false,
+                message:err.message
+            });
+            return;
+        }
+        res.status(200).json({
+            success: true,
+            message: 'sucessfully verified your email id.'
+        });
+        return;
     }
     else{
         res.status(500).json({
             success: false,
             message: 'request from unknown source'
         });
+        return;
     }
 }
 
 
-exports.login= function (req,res) {
-    Users.find({email: req.body.email},function (err,data) {
-       if(data.length<1 || err){
-           return res.status(401).json({
-               success: false,
-               message: "email id doesn't exist"
-           });
-       }
-       else if (data.length==1 && data[0]['verified']==0){
+exports.login= async function (req,res) {
+    try{
+        data= await Users.find({email: req.body.email});
+    }catch(err){
+        return res.status(500).json({
+            success:false,
+            message:err.message
+        });
+    }
+    if(data.length<1){
+        return res.status(401).json({
+            success: false,
+            message: "email id doesn't exist"
+        });
+    }
+    else if (data.length==1 && data[0]['verified']==0){
+        return res.status(401).json({
+            success: false,
+            message: 'verify your email by clicking on link sent on your mail before logging in with this email id.'
+        });
+    }
+    else{
+        try{
+            result=await bcrypt.compare(req.body.password,data[0].password);
+        }catch(err){
+            return res.status(500).json({
+                success: false,
+                message: err.message
+            });
+        }
+        if(result){
+            var token= jwt.sign({
+                email: data[0].email,
+                userId: data[0]._id
+            },
+                'secret',
+                {expiresIn:"72h"}
+                );
+            return res.status(200).json({
+                success: 'successfully logged in',
+                token: token
+            });
+        }else {
             return res.status(401).json({
                 success: false,
-                message: 'verify your email by clicking on link sent on your mail before logging in with this email id.'
+                message: 'invalid password'
             });
-       }else{
-           bcrypt.compare(req.body.password,data[0].password,function (err,result) {
-               if(err){
-                   return res.status(401).json({
-                       success: false,
-                       message: 'try again'
-                   });
-               }
-               if(result){
-                   var token= jwt.sign({
-                      email: data[0].email,
-                       userId: data[0]._id
-                   },
-                       'secret',
-                       {expiresIn:"72h"}
-                       );
-                   return res.status(200).json({
-                       success: 'successfully logged in',
-                       token: token
-                   });
-               }else {
-                   return res.status(401).json({
-                       success: false,
-                       message: 'invalid password'
-                   });
-               }
-           });
-       }
-    });
-};
+        }
+    }
+}
 
 exports.blockuser= async function(req,res){
     var Username=req.params.username;
