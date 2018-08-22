@@ -21,24 +21,25 @@ send as x-www-form-urlencoded ( from postman )<br />
 on sending POST request, token is received. keep this token safely ( in case front-end is up, store this token as cookie )
 <br /><br />
 POST /sendmessage<br />
-KEYS send as x-www-form-urlencoded ( from postman ) : to subject content<br />
+KEYS : to subject content<br />
 to is the username of recepient , subject is optional while content is required.<br />
 send HEADERS as follows<br />
 Authorization : "bearer "+ token //token is the same received token while logging in, mind the space after the word bearer<br />
 Content-Type : application/x-www-form-urlencoded<br />
 <br />
 PUT /block/{username}<br />
+blocks the person with the username passed, thus not allowing them to text the user who consumed this api.<br />
 KEYS : not required<br />
 send HEADERS as follows<br />
 Authorization : "bearer "+ token //token is the same received token while logging in, mind the space after the word bearer<br />
 Content-Type : application/x-www-form-urlencoded<br />
-what it does : blocks the person with the username passed, thus not allowing them to text the user who consumed this api.<br />
 NOTE : an example of this request would be /block/nick where nick is the username of the person to be blocked<br />
 <br />
 get /inbox<br />
+gets all the messages that were sent to the user who consumed this api.<br />
 send HEADERS as follows<br />
 Authorization : "bearer "+ token //token is the same received token while logging in, mind the space after the word bearer<br />
-what it does : gets all the messages that were sent to the user who consumed this api.<br />
+
 
 
 
