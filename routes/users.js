@@ -8,4 +8,5 @@ router.get('/verify',Users.verify);
 router.post('/login',Users.login);
 router.put('/block/:username',checkAuth,Users.blockuser);
 router.post('/sendmessage',checkAuth,Users.SendMessage);
+router.get('/inbox',checkAuth,Users.inbox)
 module.exports = router;
