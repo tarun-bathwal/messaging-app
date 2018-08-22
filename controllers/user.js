@@ -217,64 +217,68 @@ exports.blockuser= async function(req,res){
     var Username=req.params.username;
     var currentuser = req.userData.userId;
     var blockId;
-    var flag=0;
-    await Users.find({username: Username},function (err,data) {
-        if(data.length<1 || err){
-            console.log("nt found");
-            flag=1;
-        }
-        else{
-            blockId=data[0]._id;
-        }
-    });
-    if(flag==0){
-        BlockedUsers.findOne({userid:currentuser},(err,result)=>{
-            if(result==undefined){
-                var entry= new BlockedUsers({
-                    _id: new mongoose.Types.ObjectId(),
-                    userid:currentuser,
-                    blocked:blockId
-                });
-                entry.save((err,result)=>{
-                    if(err){
-                        res.json({
-                            success:false,
-                            message:err.message
-                        });
-                    }
-                    else{
-                        res.json({
-                            success:true,
-                            message:Username+" has been blocked"
-                        });
-                    }
-                })
-            }
-            else{
-                BlockedUsers.updateOne({userid:currentuser},{ $push: { blocked: blockId } },function (err,result) {
-                    if(err){
-                        res.status(500).json({
-                            success:false,
-                            message: 'Sorry! can not be blocked right now. try again'
-                        });
-                    }
-                    else
-                    {
-                        res.status(200).json({
-                        success: true,
-                        message: ""+Username+" has been blocked"
-                    });}
-                });
-            }
+    try{
+        data= await Users.find({username: Username});
+    }catch(err){
+        json.status(500).json({
+            success:false,
+            message:err.message
         });
-       
+        return;
     }
-    else{
+    if(data.length<1){
         res.status(200).json({
             success:false,
             message:"user with username "+Username+" was not found"
         });
+        return;
     }
+    blockId=data[0]._id;
+    try{
+        result=await BlockedUsers.findOne({userid:currentuser});
+    }catch(err){
+        json.status(500).json({
+            success:false,
+            message:err.message
+        });
+        return;
+    }
+    if(result==undefined){
+        var entry= new BlockedUsers({
+            _id: new mongoose.Types.ObjectId(),
+            userid:currentuser,
+            blocked:blockId
+        });
+        try{
+            result = await entry.save();
+        }catch(err){
+            json.status(500).json({
+                success:false,
+                message:err.message
+            });
+            return;
+        }
+        res.json({
+            success:true,
+            message:Username+" has been blocked"
+        });
+        return;
+    }
+    else{
+        try{
+            result=await BlockedUsers.updateOne({userid:currentuser},{ $push: { blocked: blockId } });
+        }catch(err){
+            json.status(500).json({
+                success:false,
+                message:err.message
+            });
+            return;
+        }     
+        res.status(200).json({
+        success: true,
+        message: ""+Username+" has been blocked"
+        });
+    }    
 }
 
 
@@ -290,61 +294,66 @@ exports.SendMessage = async (req,res)=>{
         });
         return;
     }
-    var to;
-    var flag=0;
-    await Users.find({username: Username},function (err,data) {
-        if(data.length<1 || err){
-            flag=1;
-        }
-        else{
-            to=data[0]._id;
-        }
-    });
-    if(flag==0){
-        await BlockedUsers.find({userid:to},(err,result)=>{
-            if(result.length>=1){
-                if(result[0].blocked.indexOf(from)!=-1)
-                {
-                    flag=2;
-                }
-            }
+    try{
+        data= await Users.find({username: Username});
+    }catch(err){
+        json.status(500).json({
+            success:false,
+            message:err.message
         });
-        if(flag==0){
-            var msg= new Chats({
-                _id: new mongoose.Types.ObjectId(),
-                from:from,
-                to:to,
-                subject:subject,
-                content:content
-            });
-            msg.save((err,result)=>{
-                if(err){
-                    res.json({
-                        success:false,
-                        message:err.message
-                    });
-                }
-                else{
-                    res.json({
-                        success:true,
-                        message:"sent the message to "+Username
-                    });
-                }
-            });
-        }
-        else{
-            res.status(200).json({
-                success:false,
-                message:Username+" has blocked you. Cannot send message."
-            })
-        }
+        return;
     }
-    else{
+    if(data.length<1){
         res.status(200).json({
             success:false,
             message:"user with username "+Username+" was not found"
         });
+        return;
     }
+    var to=data[0]._id;
+    try{
+        result = await BlockedUsers.find({userid:to});
+    }catch(err){
+        json.status(500).json({
+            success:false,
+            message:err.message
+        });
+        return;
+    }
+    console.log(result);
+    console.log(from);
+    console.log(result[0].blocked.indexOf(from));
+    if(result.length>=1){
+        if(result[0].blocked.indexOf(from)!=-1)
+        {
+            res.status(200).json({
+                success:false,
+                message:Username+" has blocked you. Cannot send message."
+            });
+            return;
+
+        }
+    }
+    var msg= new Chats({
+        _id: new mongoose.Types.ObjectId(),
+        from:from,
+        to:to,
+        subject:subject,
+        content:content
+    });
+    try{
+        result=await msg.save();
+    }catch(error){
+        res.status(500).json({
+            success:false,
+            message:error.message
+        });
+        return;
+    }
+    res.json({
+        success:true,
+        message:"sent the message to "+Username
+    });                                       
 }
 
 exports.inbox= async (req,res)=>{
@@ -385,6 +394,5 @@ exports.inbox= async (req,res)=>{
             success:false,
             message:err.message
         });
-    }
-    
+    }   
 }
